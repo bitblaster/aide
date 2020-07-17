@@ -22,6 +22,7 @@
 
 #include "aide.h"
 #include "config.h"
+#include "crc32.h"
 
 #ifndef _POSIX_C_SOURCE
 #define _POSIX_C_SOURCE 200112L
@@ -49,7 +50,7 @@
 /*for locale support*/
 
 /* This define should be somewhere else */
-#define READ_BLOCK_SIZE 16777216
+#define READ_BLOCK_SIZE 8192
 
 #ifdef WITH_MHASH
 #include <mhash.h>
@@ -60,6 +61,7 @@
 #ifndef MAP_FAILED
 #define MAP_FAILED  (-1)
 #endif /* MAP_FAILED */
+
 #define MMAP_BLOCK_SIZE 16777216
 #endif /* HAVE_MMAP */
 
@@ -275,6 +277,7 @@ void calc_md(struct stat* old_fs,db_line* line) {
     off_t r_size=0;
     off_t size=0;
     char* buf;
+    uint32_t crc32=0;
 
     struct md_container mdc;
     
@@ -339,14 +342,16 @@ void calc_md(struct stat* old_fs,db_line* line) {
 #if READ_BLOCK_SIZE>SSIZE_MAX
 #error "READ_BLOCK_SIZE" is too large. Max value is SSIZE_MAX, and current is READ_BLOCK_SIZE
 #endif
+
       while ((size=TEMP_FAILURE_RETRY(read(filedes,buf,READ_BLOCK_SIZE)))>0) {
-	if (update_md(&mdc,buf,size)!=RETOK) {
-	  error(0,"Message digest failed during update\n");
-	  close(filedes);
-	  close_md(&mdc);
-	  return;
-	}
-	r_size+=size;
+        /*if (update_md(&mdc,buf,size)!=RETOK) {
+            error(0,"Message digest failed during update\n");
+            close(filedes);
+            close_md(&mdc);
+            return;
+        }*/
+        crc32 = rhash_get_crc32(crc32, buf, size);
+        r_size+=size;
       }
 
 #ifdef WITH_PRELINK
@@ -362,7 +367,14 @@ void calc_md(struct stat* old_fs,db_line* line) {
       }
 #endif
       free(buf);
+
       close_md(&mdc);
+
+      mdc.crc32[3]=*((unsigned char*) &crc32);
+      mdc.crc32[2]=*(((unsigned char*) &crc32)+1);
+      mdc.crc32[1]=*(((unsigned char*) &crc32)+2);
+      mdc.crc32[0]=*(((unsigned char*) &crc32)+3);
+      
       md2line(&mdc,line);
 
     } else {

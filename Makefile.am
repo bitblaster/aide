@@ -26,6 +26,8 @@ bin_PROGRAMS = aide
 aide_SOURCES = src/aide.c include/aide.h \
 	include/base64.h src/base64.c \
 	include/be.h src/be.c \
+	include/byte_order.h src/byte_order.c \
+	include/crc32.h src/crc32.c \
 	include/commandconf.h src/commandconf.c \
 	include/attributes.h src/attributes.c \
 	include/report.h src/report.c \
@@ -52,6 +54,7 @@ aide_SOURCES = src/aide.c include/aide.h \
 	include/symboltable.h src/symboltable.c \
 	include/types.h \
 	include/url.h \
+	include/ustd.h \
 	include/util.h src/util.c
 if USE_CURL
 aide_SOURCES += include/fopen.h src/fopen.c
